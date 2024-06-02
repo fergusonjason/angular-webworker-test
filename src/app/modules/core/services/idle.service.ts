@@ -8,7 +8,8 @@ import { IdleStatus } from '../types/timer-types.type';
 })
 export class IdleService {
 
-  private countdown$$ : BehaviorSubject<number | null> = new BehaviorSubject<number | null>(null);
+  private timer$$ : BehaviorSubject<number | null> = new BehaviorSubject<number | null>(null);
+  private countdownToTimeout$$ : BehaviorSubject<number | null> = new BehaviorSubject<number | null>(null);
 
   private isIdle$$ : BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
   private isTimedOut$$ : BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
@@ -19,18 +20,20 @@ export class IdleService {
   constructor() {
 
     this.timerWorker = new Worker(new URL("../webworkers/timer.worker", import.meta.url));
-    // bridge over the webworker output to an observable
+
+    // the event handler will be set up on the fly
     this.timerWorker.onmessage = null;
-
-
-    // need a way to flip isIdle and isTimedOUt
 
 
    }
 
-   get countdown$() : Observable<number | null>  {
-    return this.countdown$$.asObservable();
+   get timer$() : Observable<number | null>  {
+    return this.timer$$.asObservable();
     // TODO: do we need a shareReplay()?
+   }
+
+   get countdownToTimeout$() : Observable<number | null> {
+    return this.countdownToTimeout$$.asObservable();
    }
 
    get isIdle$() : Observable<boolean> {
@@ -65,18 +68,22 @@ export class IdleService {
 
     this.timerWorker.onmessage = ({data}) => {
 
-      this.countdown$$.next(data);
+      this.timer$$.next(data);
       if (data > realIdleTime && this.isIdle$$.getValue() == false) {
         this.isIdle$$.next(true);
         this.idleStatus$$.next("IDLE");
-        return;
+        //return;
       }
 
       if (data > realTimeoutTime && this.isTimedOut$$.getValue() == false) {
         this.isTimedOut$$.next(true);
         this.idleStatus$$.next("TIMEOUT");
-        return;
+        //return;
       }
+
+      let timeUntilTimeout = realTimeoutTime - data;
+      timeUntilTimeout = timeUntilTimeout > 0 ? timeUntilTimeout : 0;
+      this.countdownToTimeout$$.next(timeUntilTimeout);
     };
 
     this.timerWorker.postMessage(timerMessage);

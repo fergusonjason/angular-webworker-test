@@ -7,7 +7,9 @@
   </span>
 </div>
 
-Status: {{ idleStatus$ | async }}
+<p>Status: {{ idleStatus$ | async }}</p>
+
+<p>Countdown: {{ countdownToTimeout$ | async }}</p>
 
 <br />
 <button (click)="startTimer()">Start Timer</button>

@@ -20,13 +20,15 @@ export class AppComponent implements OnInit{
 
   countdown$! : Observable<number | null>;
   idleStatus$! : Observable<IdleStatus|null>;
+  countdownToTimeout$! : Observable<number | null>;
 
   constructor(private idleService : IdleService) {}
 
   ngOnInit(): void {
 
-    this.countdown$ = this.idleService.countdown$;
+    this.countdown$ = this.idleService.timer$;
     this.idleStatus$ = this.idleService.idleStatus$;
+    this.countdownToTimeout$ = this.idleService.countdownToTimeout$;
   }
 
   startTimer() {

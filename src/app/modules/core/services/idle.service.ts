@@ -11,8 +11,6 @@ export class IdleService {
   private timer$$ : BehaviorSubject<number | null> = new BehaviorSubject<number | null>(null);
   private countdownToTimeout$$ : BehaviorSubject<number | null> = new BehaviorSubject<number | null>(null);
 
-  private isIdle$$ : BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
-  private isTimedOut$$ : BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
   private idleStatus$$ : BehaviorSubject<IdleStatus | null> = new BehaviorSubject<IdleStatus | null>(null);
 
   private timerWorker : Worker;
@@ -36,12 +34,57 @@ export class IdleService {
     return this.countdownToTimeout$$.asObservable();
    }
 
+   // should I just base these on the idle status?
+   get isActive$() : Observable<boolean> {
+    return this.idleStatus$$.pipe(
+      map((status) => {
+        if (!status) {
+          return true;
+        }
+
+        switch (status) {
+          case "ACTIVE":
+            return true;
+          default:
+            return false;
+        }
+      })
+    );
+   }
+
    get isIdle$() : Observable<boolean> {
-    return this.isIdle$$.asObservable();
+
+    return this.idleStatus$$.pipe(
+      map((status) => {
+        if (!status) {
+          return true;
+        }
+
+        switch (status) {
+          case "IDLE":
+            return true;
+          default:
+            return false;
+        }
+      })
+    );
    }
 
    get isTimedOut$() : Observable<boolean> {
-    return this.isTimedOut$$.asObservable();
+    return this.idleStatus$$.pipe(
+      map((status) => {
+        if (!status) {
+          return true;
+        }
+
+        switch (status) {
+          case "TIMEOUT":
+            return true;
+          default:
+            return false;
+        }
+      })
+    );
    }
 
    get idleStatus$() : Observable<IdleStatus | null> {
@@ -62,23 +105,17 @@ export class IdleService {
       timeoutTime: realTimeoutTime
     };
 
-    this.isIdle$$.next(false);
-    this.isTimedOut$$.next(false);
     this.idleStatus$$.next("ACTIVE");
 
     this.timerWorker.onmessage = ({data}) => {
 
       this.timer$$.next(data);
-      if (data > realIdleTime && this.isIdle$$.getValue() == false) {
-        this.isIdle$$.next(true);
+      if (data > realIdleTime && this.idleStatus$$.getValue() !== "IDLE") {
         this.idleStatus$$.next("IDLE");
-        //return;
       }
 
-      if (data > realTimeoutTime && this.isTimedOut$$.getValue() == false) {
-        this.isTimedOut$$.next(true);
+      if (data > realTimeoutTime && this.idleStatus$$.getValue() !== "TIMEOUT") {
         this.idleStatus$$.next("TIMEOUT");
-        //return;
       }
 
       let timeUntilTimeout = realTimeoutTime - data;
